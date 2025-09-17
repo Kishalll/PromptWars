@@ -1,0 +1,22 @@
+{
+  "name": "prompt-duel-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 3000",
+    "build": "next build",
+    "start": "next start -p 3000"
+  },
+  "dependencies": {
+    "axios": "^1.7.2",
+    "next": "^13.5.4",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "socket.io-client": "^4.7.5"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.8",
+    "postcss": "^8.4.24",
+    "autoprefixer": "^10.4.14"
+  }
+}
