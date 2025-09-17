@@ -1,2 +1,2 @@
 # PromptWars
-A Fun Multiplayer game that helps u improve your prompting skills
+A Fun Multiplayer game that helps your improve your prompting skills
