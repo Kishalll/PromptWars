@@ -96,12 +96,12 @@ function extractOutputText(respData) {
 /** Ask the LLM to return a single number 0..1 for similarity */
 async function scoreWithLLM(a, b) {
   const url = `${OLLAMA_BASE_URL}/api/generate`;
-  const prompt = `Rate semantic similarity between phrases A and B. Return ONLY a number 0.0-1.0, no text.
+  const prompt = `Rate how well phrase A describes or matches phrase B. Return ONLY a decimal number between 0.0 and 1.0.
 
 A: "${a}"
 B: "${b}"
 
-Number:`;
+Score:`;
 
   try {
     const resp = await axios.post(url, {
@@ -111,7 +111,7 @@ Number:`;
       options: {
         temperature: 0.1,
         top_p: 0.1,
-        stop: ["\n", " ", ".", ",", "!", "?"]
+        stop: ["\n", "\r", " ", ".", ",", "!", "?", "explanation", "because"]
       }
     }, { timeout: 25000 });
 
@@ -133,6 +133,30 @@ Number:`;
 async function similarity(prompt, target) {
   const safeA = prompt == null ? "" : String(prompt);
   const safeB = target == null ? "" : String(target);
+
+  // First check for exact matches or high overlap
+  const promptLower = safeA.toLowerCase();
+  const targetLower = safeB.toLowerCase();
+  
+  // If target phrase appears in prompt, give high score
+  if (promptLower.includes(targetLower)) {
+    return 0.95;
+  }
+  
+  // Check word overlap
+  const promptWords = promptLower.split(/\s+/).filter(w => w.length > 2);
+  const targetWords = targetLower.split(/\s+/).filter(w => w.length > 2);
+  
+  if (targetWords.length > 0) {
+    const matchingWords = targetWords.filter(word => 
+      promptWords.some(pWord => pWord.includes(word) || word.includes(pWord))
+    );
+    const wordOverlap = matchingWords.length / targetWords.length;
+    
+    if (wordOverlap >= 0.8) return 0.9;
+    if (wordOverlap >= 0.6) return 0.7;
+    if (wordOverlap >= 0.4) return 0.5;
+  }
 
   const embScore = await scoreWithEmbeddings(safeA, safeB);
   if (embScore !== null) return Math.max(0, Math.min(1, embScore));

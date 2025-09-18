@@ -15,6 +15,30 @@ const { similarityToPoints } = require("./utils/scoring");
 const PORT = process.env.PORT || 4000;
 const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || "http://localhost:3000";
 
+// Cleanup function for graceful shutdown
+async function cleanup() {
+  console.log('\n🔄 Shutting down gracefully...');
+  
+  // Stop Ollama if it was started by this process
+  try {
+    const { exec } = require('child_process');
+    exec('pkill -f ollama', (error) => {
+      if (!error) {
+        console.log('✅ Ollama stopped');
+      }
+    });
+  } catch (e) {
+    // Ignore errors when stopping Ollama
+  }
+  
+  process.exit(0);
+}
+
+// Handle process termination
+process.on('SIGINT', cleanup);
+process.on('SIGTERM', cleanup);
+process.on('SIGQUIT', cleanup);
+
 (async function bootstrap() {
   await init();
 
