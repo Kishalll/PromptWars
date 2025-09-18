@@ -15,18 +15,149 @@ const { similarityToPoints } = require("./utils/scoring");
 const PORT = process.env.PORT || 4000;
 const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || "http://localhost:3000";
 
+// Track if we started Ollama ourselves
+let ollamaProcess = null;
+
 // Cleanup function for graceful shutdown
 async function cleanup() {
   console.log('\n🔄 Shutting down gracefully...');
   
-  // Stop Ollama if it was started by this process
+  // Stop Ollama more aggressively
   try {
     const { exec } = require('child_process');
-    exec('pkill -f ollama', (error) => {
-      if (!error) {
-        console.log('✅ Ollama stopped');
-      }
+    
+    // Try multiple approaches to stop Ollama
+    const commands = [
+      'pkill -f "ollama serve"',
+      'pkill -f ollama',
+      'killall ollama',
+      'taskkill /F /IM ollama.exe' // Windows fallback
+    ];
+    
+    for (const cmd of commands) {
+      exec(cmd, (error, stdout, stderr) => {
+        if (!error) {
+          console.log('✅ Ollama stopped with command:', cmd);
+        }
+      });
+    }
+    
+    // Also try to stop via API if available
+    try {
+      const axios = require('axios');
+      await axios.post('http://localhost:11434/api/stop', {}, { timeout: 2000 });
+      console.log('✅ Ollama stopped via API');
+    } catch (e) {
+      // API stop failed, that's okay
+    }
+    
+    // Give processes time to stop
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+  } catch (e) {
+    console.warn('⚠️ Could not stop Ollama:', e.message);
+  }
+  
+  console.log('🔄 Backend shutdown complete');
+  process.exit(0);
+}
+
+// More comprehensive signal handling
+process.on('SIGINT', () => {
+  console.log('\n📡 Received SIGINT (Ctrl+C)');
+  cleanup();
+});
+
+process.on('SIGTERM', () => {
+  console.log('\n📡 Received SIGTERM');
+  cleanup();
+});
+
+process.on('SIGQUIT', () => {
+  console.log('\n📡 Received SIGQUIT');
+  cleanup();
+});
+
+// Handle Windows Ctrl+C
+if (process.platform === "win32") {
+  const rl = require("readline").createInterface({
+    input: process.stdin,
+    output: process.stdout
+  });
+
+  rl.on("SIGINT", () => {
+    console.log('\n📡 Received Windows SIGINT');
+    cleanup();
+  });
+}
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+  console.error('💥 Uncaught Exception:', error);
+  cleanup();
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('💥 Unhandled Rejection at:', promise, 'reason:', reason);
+  cleanup();
+});
+
+// Attempt to start Ollama if not running
+async function ensureOllamaRunning() {
+  try {
+    const axios = require('axios');
+    await axios.get('http://localhost:11434/api/version', { timeout: 3000 });
+    console.log('✅ Ollama is already running');
+    return true;
+  } catch (e) {
+    console.log('🚀 Starting Ollama...');
+    
+    const { spawn } = require('child_process');
+    ollamaProcess = spawn('ollama', ['serve'], {
+      stdio: 'pipe',
+      detached: false
     });
+    
+    ollamaProcess.on('error', (err) => {
+      console.warn('⚠️ Could not start Ollama automatically:', err.message);
+      console.log('Please start Ollama manually: ollama serve');
+    });
+    
+    // Wait a bit for Ollama to start
+    await new Promise(resolve => setTimeout(resolve, 3000));
+    
+    try {
+      await axios.get('http://localhost:11434/api/version', { timeout: 3000 });
+      console.log('✅ Ollama started successfully');
+      return true;
+    } catch (e2) {
+      console.warn('⚠️ Ollama may not have started properly');
+      return false;
+    }
+  }
+}
+
+// Enhanced cleanup that kills our spawned process
+async function enhancedCleanup() {
+  console.log('\n🔄 Enhanced shutdown starting...');
+  
+  // Kill our spawned Ollama process first
+  if (ollamaProcess && !ollamaProcess.killed) {
+    console.log('🔄 Stopping our Ollama process...');
+    ollamaProcess.kill('SIGTERM');
+    
+    // Wait a bit, then force kill if needed
+    setTimeout(() => {
+      if (!ollamaProcess.killed) {
+        console.log('🔄 Force killing Ollama process...');
+        ollamaProcess.kill('SIGKILL');
+      }
+    }, 2000);
+  }
+  
+  // Then run the general cleanup
+  await cleanup();
+}
   } catch (e) {
     // Ignore errors when stopping Ollama
   }
@@ -287,5 +418,6 @@ process.on('SIGQUIT', cleanup);
 
   server.listen(PORT, () => {
     console.log(`✅ Backend running on http://localhost:${PORT}`);
+    console.log('💡 Press Ctrl+C to stop both backend and Ollama');
   });
 })();
