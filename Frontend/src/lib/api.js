@@ -24,3 +24,7 @@ export async function fetchLeaderboard() {
 export async function health() {
   return api.get('/api/health');
 }
+
+export async function testOllama() {
+  return api.get('/api/test-ollama');
+}

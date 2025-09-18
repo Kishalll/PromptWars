@@ -23,6 +23,27 @@ const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || "http://localhost:3000";
   app.use(express.json());
 
   app.get("/api/health", (req, res) => res.json({ ok: true }));
+  
+  // Test endpoint to check Ollama connection
+  app.get("/api/test-ollama", async (req, res) => {
+    try {
+      const testSim = await similarity("cat", "feline");
+      const testTargets = await generateTargets(1);
+      res.json({ 
+        ok: true, 
+        similarity_test: testSim,
+        target_test: testTargets[0],
+        ollama_connected: true 
+      });
+    } catch (error) {
+      res.json({ 
+        ok: false, 
+        error: error.message,
+        ollama_connected: false 
+      });
+    }
+  });
+  
   app.use("/api/auth", authRoutes);
   app.use("/api/leaderboard", leaderboardRoutes);
 

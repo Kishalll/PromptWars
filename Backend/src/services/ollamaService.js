@@ -96,29 +96,35 @@ function extractOutputText(respData) {
 /** Ask the LLM to return a single number 0..1 for similarity */
 async function scoreWithLLM(a, b) {
   const url = `${OLLAMA_BASE_URL}/api/generate`;
-  // strict instruction to only return a number
-  const prompt = `You are a strict similarity rater.
-Compare the semantic similarity between these two short phrases labeled A and B.
-Return ONLY a single number between 0.0 and 1.0 (inclusive), using a decimal if needed. Do NOT provide any words or explanation.
+  const prompt = `Rate semantic similarity between phrases A and B. Return ONLY a number 0.0-1.0, no text.
 
 A: "${a}"
-B: "${b}"`;
+B: "${b}"
+
+Number:`;
 
   try {
     const resp = await axios.post(url, {
       model: OLLAMA_LLM_MODEL,
       prompt,
-      stream: false
+      stream: false,
+      options: {
+        temperature: 0.1,
+        top_p: 0.1,
+        stop: ["\n", " ", ".", ",", "!", "?"]
+      }
     }, { timeout: 25000 });
 
     const text = extractOutputText(resp && resp.data ? resp.data : null) || "";
-    const m = String(text).match(/([01](?:\.\d+)?)/);
+    // Extract only the first number found
+    const m = String(text).trim().match(/^([01](?:\.\d+)?)/);
     if (m) {
       const val = parseFloat(m[1]);
       if (Number.isFinite(val)) return Math.max(0, Math.min(1, val));
     }
     return 0;
   } catch (err) {
+    console.warn("LLM scoring failed:", err.message);
     return 0;
   }
 }
@@ -140,9 +146,11 @@ async function similarity(prompt, target) {
 function stripFences(text) {
   if (!text && text !== "") return "";
   let s = String(text);
-  // remove code fences
+  // Remove code fences and common AI response patterns
   s = s.replace(/```(?:\w+)?\s*/g, "").replace(/\s*```/g, "");
-  // remove leading/trailing quotes
+  s = s.replace(/^(Here are|Here's|The|JSON array:|Array:)\s*/i, "");
+  s = s.replace(/\s*(Do you want|Would you like|Any questions|Need more|Let me know).*$/is, "");
+  // Remove leading/trailing quotes
   s = s.trim().replace(/^["'“”]+|["'“”]+$/g, "").trim();
   return s;
 }
@@ -151,25 +159,40 @@ function stripFences(text) {
 function tryParseJsonArray(rawText) {
   if (!rawText) return null;
   let t = rawText.trim();
-  // strip obvious markdown fences
+  
+  // Remove common AI response prefixes/suffixes
+  t = t.replace(/^(Here are|Here's|The targets are|JSON array:|Array:)\s*/i, "");
+  t = t.replace(/\s*(Do you want|Would you like|Any questions|Need more).*$/i, "");
+  
   t = stripFences(t);
-  // sometimes model returns extra text; try to find the first [ ... ] block
+  
+  // Find JSON array in the text
   const firstBracket = t.indexOf("[");
   const lastBracket = t.lastIndexOf("]");
   if (firstBracket >= 0 && lastBracket > firstBracket) {
     const candidate = t.slice(firstBracket, lastBracket + 1);
     try {
       const parsed = JSON.parse(candidate);
-      if (Array.isArray(parsed)) return parsed.map(s => String(s).trim()).filter(Boolean);
+      if (Array.isArray(parsed)) {
+        return parsed
+          .map(s => String(s).trim())
+          .filter(Boolean)
+          .filter(s => s.length > 0 && s.length < 50); // reasonable length filter
+      }
     } catch (e) {
       // ignore parse error
     }
   }
 
-  // fallback: try to parse t as JSON directly
+  // Fallback: try parsing entire text as JSON
   try {
     const parsed2 = JSON.parse(t);
-    if (Array.isArray(parsed2)) return parsed2.map(s => String(s).trim()).filter(Boolean);
+    if (Array.isArray(parsed2)) {
+      return parsed2
+        .map(s => String(s).trim())
+        .filter(Boolean)
+        .filter(s => s.length > 0 && s.length < 50);
+    }
   } catch (e) {
     // not JSON
   }
@@ -190,21 +213,15 @@ async function generateTargets(count = 3, excludeArray = [], theme = null) {
   count = Math.max(1, Math.min(10, Number(count) || 3));
   const excludeLower = new Set((excludeArray || []).map(x => String(x).toLowerCase()));
 
-  // prompt tuned for game-suitable, guessable targets
   const seed = Date.now() + "-" + Math.floor(Math.random() * 10000);
   const themeNote = theme ? ` Theme: ${String(theme)}.` : "";
-  const prompt = `You are an assistant that generates short, game-friendly target phrases.
-Targets will be used in a 2-player prompt-guessing duel. Each target must be:
-- Concrete and visual (objects, scenes, or short concepts people recognize).
-- Guessable: common or easily describable (avoid extremely obscure references).
-- Concise: 2 to 6 words, typically noun phrases or short scene descriptions.
-- Not proper names, brands, or copyrighted characters.
-- Not instructions, questions, or sentences — just short phrases.
-- Do NOT include code fences, explanation, or extra text.
+  const prompt = `Generate ${count} short visual phrases (2-4 words each) as JSON array. No explanation.${themeNote}
 
-Give EXACTLY ${count} UNIQUE targets as a JSON array of strings and nothing else.${themeNote}
-Examples of valid targets: ["deserted island", "haunted library", "robot chef", "stormy ocean"].
-Seed: ${seed}`;
+Format: ["phrase1", "phrase2", "phrase3"]
+
+Examples: ["sunset beach", "old castle", "busy market"]
+
+JSON:`;
 
   const url = `${OLLAMA_BASE_URL}/api/generate`;
 
@@ -213,7 +230,12 @@ Seed: ${seed}`;
     const resp = await axios.post(url, {
       model: OLLAMA_LLM_MODEL,
       prompt: p,
-      stream: false
+      stream: false,
+      options: {
+        temperature: 0.7,
+        top_p: 0.9,
+        stop: ["\n\n", "Explanation:", "Note:", "Additional"]
+      }
     }, { timeout: 30000 });
     return extractOutputText(resp && resp.data ? resp.data : null) || "";
   }
@@ -256,23 +278,31 @@ Seed: ${seed}`;
     while (filtered.length < count && attempts < 2) {
       attempts++;
       const need = count - filtered.length;
-      const followPrompt = `Provide ${need} more UNIQUE short target phrases (2-6 words) as a JSON array. Do not include any explanation. Seed: ${seed}-${attempts}`;
+      const followPrompt = `${need} more short phrases as JSON array only:`;
       try {
         let r2 = await askModelForTargets(followPrompt);
         r2 = stripFences(r2);
+        // Clean up any extra AI chatter
+        r2 = r2.replace(/^(Here are|Here's|The phrases are)\s*/i, "");
+        r2 = r2.replace(/\s*(Do you want|Would you like|Any questions).*$/i, "");
+        
         const more = tryParseJsonArray(r2) || r2.split(/\r?\n|,\s*/).map(s => s.trim()).filter(Boolean);
         for (let m of more) {
           if (!m) continue;
-          m = m.trim().replace(/^["'“”]+|["'“”]+$/g, "").trim();
+          m = m.trim()
+            .replace(/^["'""]+|["'""]+$/g, "")
+            .replace(/^\d+\.\s*/, "") // remove numbering
+            .trim();
           const low = m.toLowerCase();
           if (seen.has(low) || excludeLower.has(low)) continue;
           const words = m.split(/\s+/).filter(Boolean).length;
-          if (words < 1 || words > 12) continue;
+          if (words < 1 || words > 8) continue; // stricter word limit
           seen.add(low);
           filtered.push(m);
           if (filtered.length >= count) break;
         }
       } catch (e) {
+        console.warn("Follow-up target generation failed:", e.message);
         break;
       }
     }
