@@ -367,5 +367,42 @@ JSON:`;
 
 module.exports = {
   similarity,
-  generateTargets
+  generateTargets,
+  stopOllama: async function() {
+    try {
+      // Stop all running models first
+      const modelsUrl = `${OLLAMA_BASE_URL}/api/ps`;
+      const runningModels = await axios.get(modelsUrl, { timeout: 5000 });
+      
+      if (runningModels.data && runningModels.data.models) {
+        for (const model of runningModels.data.models) {
+          try {
+            await axios.delete(`${OLLAMA_BASE_URL}/api/generate`, {
+              data: { model: model.name, keep_alive: 0 },
+              timeout: 3000
+            });
+          } catch (e) {
+            // Continue with other models
+          }
+        }
+      }
+      
+      // Force unload specific models
+      const modelsToStop = [OLLAMA_LLM_MODEL, OLLAMA_EMBED_MODEL];
+      for (const model of modelsToStop) {
+        try {
+          await axios.post(`${OLLAMA_BASE_URL}/api/generate`, {
+            model: model,
+            keep_alive: 0
+          }, { timeout: 3000 });
+        } catch (e) {
+          // Model might not be loaded
+        }
+      }
+      
+      console.log("✓ Ollama models stopped");
+    } catch (err) {
+      console.warn("Warning: Could not stop Ollama models via API:", err.message);
+    }
+  }
 };
