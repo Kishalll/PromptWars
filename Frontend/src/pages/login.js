@@ -1,5 +1,4 @@
-// src/pages/login.js
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import Header from "../components/Header";
 import { registerUser, loginUser } from "../lib/api";
@@ -8,27 +7,31 @@ export default function LoginPage() {
   const [username, setUsername] = useState("");
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState(null);
+  const [isLoaded, setIsLoaded] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    setIsLoaded(true);
+  }, []);
 
   async function handleRegister() {
     setMsg(null);
-    if (!username) return setMsg({ type: "error", text: "Enter a username" });
+    if (!username) return setMsg({ type: "error", text: "Neural signature required" });
     setLoading(true);
     try {
       await registerUser(username);
-      // store username locally and go to home (or game)
       localStorage.setItem("pd_username", username);
       router.push("/game");
     } catch (e) {
       const code = e?.response?.status;
-      if (code === 409) setMsg({ type: "error", text: "Username already taken. Choose another." });
-      else setMsg({ type: "error", text: "Server error or network issue." });
+      if (code === 409) setMsg({ type: "error", text: "Neural signature already exists. Choose another identity." });
+      else setMsg({ type: "error", text: "System malfunction detected. Try again." });
     } finally { setLoading(false); }
   }
 
   async function handleLogin() {
     setMsg(null);
-    if (!username) return setMsg({ type: "error", text: "Enter a username" });
+    if (!username) return setMsg({ type: "error", text: "Neural signature required" });
     setLoading(true);
     try {
       await loginUser(username);
@@ -36,37 +39,105 @@ export default function LoginPage() {
       router.push("/game");
     } catch (e) {
       const code = e?.response?.status;
-      if (code === 404) setMsg({ type: "error", text: "User not found — please register first." });
-      else setMsg({ type: "error", text: "Server error or network issue." });
+      if (code === 404) setMsg({ type: "error", text: "Neural signature not found — please register first." });
+      else setMsg({ type: "error", text: "System malfunction detected. Try again." });
     } finally { setLoading(false); }
   }
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Header username={localStorage.getItem("pd_username")} />
-      <main className="flex-1 container mx-auto p-6">
-        <div className="max-w-md mx-auto bg-white p-6 rounded shadow">
-          <h2 className="text-2xl font-semibold mb-4">Login / Register</h2>
-          <input
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            placeholder="Username (3-20 letters/numbers/_)"
-            className="w-full px-3 py-2 border rounded mb-3"
-          />
+      <Header username={typeof window !== 'undefined' ? localStorage.getItem("pd_username") : null} />
+      
+      <main className="flex-1 flex items-center justify-center px-6 py-12">
+        <div className={`w-full max-w-md transform transition-all duration-1000 ${isLoaded ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
+          <div className="cyber-card p-8">
+            {/* Header */}
+            <div className="text-center mb-8">
+              <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-cyan-400 to-purple-600 rounded-full flex items-center justify-center shadow-lg shadow-cyan-500/30">
+                <span className="text-3xl">🔐</span>
+              </div>
+              <h2 className="text-3xl font-bold font-mono mb-2">
+                <span className="bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent neon-text">
+                  NEURAL ACCESS
+                </span>
+              </h2>
+              <p className="text-gray-400">Initialize your combat profile</p>
+            </div>
 
-          {msg && <div className={`p-2 mb-3 text-sm ${msg.type === 'error' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>{msg.text}</div>}
+            {/* Form */}
+            <div className="space-y-6">
+              <div>
+                <label className="block text-sm font-mono text-gray-300 mb-2">
+                  NEURAL SIGNATURE
+                </label>
+                <input
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Enter your combat callsign..."
+                  className="cyber-input w-full"
+                  maxLength={20}
+                />
+                <div className="text-xs text-gray-500 mt-1 font-mono">
+                  3-20 characters: letters, numbers, underscores only
+                </div>
+              </div>
 
-          <div className="flex gap-3">
-            <button onClick={handleRegister} className="flex-1 bg-blue-600 text-white py-2 rounded" disabled={loading}>
-              {loading ? "Working..." : "Register (unique)"}
-            </button>
-            <button onClick={handleLogin} className="flex-1 border py-2 rounded" disabled={loading}>
-              {loading ? "Working..." : "Login (existing)"}
-            </button>
-          </div>
+              {msg && (
+                <div className={`p-4 rounded-lg border ${
+                  msg.type === 'error' 
+                    ? 'bg-red-900/20 border-red-500/30 text-red-400' 
+                    : 'bg-green-900/20 border-green-500/30 text-green-400'
+                }`}>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-lg">
+                      {msg.type === 'error' ? '⚠️' : '✅'}
+                    </span>
+                    <span className="font-mono text-sm">{msg.text}</span>
+                  </div>
+                </div>
+              )}
 
-          <div className="mt-4 text-sm text-gray-500">
-            If you're returning, press Login. If new, press Register. Username must be unique.
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <button 
+                  onClick={handleRegister} 
+                  className="cyber-btn w-full py-3 disabled:opacity-50 disabled:cursor-not-allowed" 
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <div className="flex items-center justify-center space-x-2">
+                      <div className="cyber-spinner w-4 h-4"></div>
+                      <span>PROCESSING...</span>
+                    </div>
+                  ) : (
+                    "🚀 REGISTER"
+                  )}
+                </button>
+                
+                <button 
+                  onClick={handleLogin} 
+                  className="cyber-btn-secondary w-full py-3 disabled:opacity-50 disabled:cursor-not-allowed" 
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <div className="flex items-center justify-center space-x-2">
+                      <div className="cyber-spinner w-4 h-4"></div>
+                      <span>ACCESSING...</span>
+                    </div>
+                  ) : (
+                    "🔑 LOGIN"
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Info */}
+            <div className="mt-8 p-4 bg-black/30 rounded-lg border border-gray-700/50">
+              <div className="text-xs text-gray-400 font-mono space-y-1">
+                <div>• <span className="text-cyan-400">REGISTER</span>: Create new neural profile</div>
+                <div>• <span className="text-purple-400">LOGIN</span>: Access existing profile</div>
+                <div>• Neural signatures must be unique across the network</div>
+              </div>
+            </div>
           </div>
         </div>
       </main>
