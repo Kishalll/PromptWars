@@ -170,13 +170,13 @@ export default function GamePage() {
 
   const getStatusDisplay = () => {
     switch (status) {
-      case "idle": return { text: "READY", color: "text-cyan-400", icon: "⚡" };
-      case "queued": return { text: "SEARCHING", color: "text-yellow-400", icon: "🔍" };
-      case "matched": return { text: "MATCHED", color: "text-green-400", icon: "🎯" };
-      case "in-round": return { text: "COMBAT", color: "text-red-400", icon: "⚔️" };
-      case "waiting": return { text: "WAITING", color: "text-purple-400", icon: "⏳" };
-      case "finished": return { text: "COMPLETE", color: "text-blue-400", icon: "🏆" };
-      default: return { text: "UNKNOWN", color: "text-gray-400", icon: "❓" };
+      case "idle": return { text: "READY", color: "text-cyan-400", icon: "⚡", bg: "from-cyan-500/20 to-blue-500/20", border: "border-cyan-500/40" };
+      case "queued": return { text: "SEARCHING", color: "text-yellow-400", icon: "🔍", bg: "from-yellow-500/20 to-orange-500/20", border: "border-yellow-500/40" };
+      case "matched": return { text: "MATCHED", color: "text-green-400", icon: "🎯", bg: "from-green-500/20 to-cyan-500/20", border: "border-green-500/40" };
+      case "in-round": return { text: "COMBAT", color: "text-red-400", icon: "⚔️", bg: "from-red-500/20 to-pink-500/20", border: "border-red-500/40" };
+      case "waiting": return { text: "WAITING", color: "text-purple-400", icon: "⏳", bg: "from-purple-500/20 to-pink-500/20", border: "border-purple-500/40" };
+      case "finished": return { text: "COMPLETE", color: "text-blue-400", icon: "🏆", bg: "from-blue-500/20 to-purple-500/20", border: "border-blue-500/40" };
+      default: return { text: "UNKNOWN", color: "text-gray-400", icon: "❓", bg: "from-gray-500/20 to-gray-600/20", border: "border-gray-500/40" };
     }
   };
 
@@ -189,60 +189,94 @@ export default function GamePage() {
       <main className="flex-1 container mx-auto p-6">
         <div className={`transform transition-all duration-1000 ${isLoaded ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
           {/* Header */}
-          <div className="text-center mb-8">
-            <h2 className="text-4xl font-bold font-mono mb-4">
+          <div className="text-center mb-12">
+            <div className="inline-block p-4 rounded-full bg-gradient-to-r from-cyan-500/20 to-purple-500/20 border border-cyan-500/30 mb-6">
+              <span className="text-4xl">⚔️</span>
+            </div>
+            
+            <h2 className="text-4xl md:text-6xl font-bold font-mono mb-6">
               <span className="bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent neon-text">
                 NEURAL BATTLEFIELD
               </span>
             </h2>
             
-            {/* Status Display */}
-            <div className="cyber-card p-4 max-w-md mx-auto">
-              <div className="flex items-center justify-center space-x-3">
-                <span className="text-2xl">{statusDisplay.icon}</span>
-                <span className="font-mono text-gray-300">STATUS:</span>
-                <span className={`font-bold font-mono ${statusDisplay.color} neon-text`}>
-                  {statusDisplay.text}
-                </span>
+            {/* Enhanced Status Display */}
+            <div className={`cyber-card p-6 max-w-md mx-auto bg-gradient-to-r ${statusDisplay.bg} border-2 ${statusDisplay.border}`}>
+              <div className="flex items-center justify-center space-x-4">
+                <div className="text-3xl animate-pulse">{statusDisplay.icon}</div>
+                <div>
+                  <div className="font-mono text-gray-300 text-sm">SYSTEM STATUS</div>
+                  <div className={`font-bold font-mono text-xl ${statusDisplay.color} neon-text`}>
+                    {statusDisplay.text}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
           {/* Idle State */}
           {status === "idle" && (
-            <div className="max-w-2xl mx-auto text-center">
-              <div className="cyber-card p-8 mb-6">
-                <div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-cyan-400 to-purple-600 rounded-full flex items-center justify-center shadow-lg shadow-cyan-500/30">
-                  <span className="text-4xl">⚡</span>
+            <div className="max-w-3xl mx-auto text-center">
+              <div className="cyber-card p-12 mb-8 battle-arena">
+                <div className="w-32 h-32 mx-auto mb-8 bg-gradient-to-br from-cyan-400 via-blue-500 to-purple-600 rounded-full flex items-center justify-center shadow-2xl shadow-cyan-500/40 relative">
+                  <span className="text-6xl">⚡</span>
+                  <div className="absolute inset-0 bg-gradient-to-br from-cyan-400 via-blue-500 to-purple-600 rounded-full blur-2xl opacity-50 -z-10 scale-150 animate-pulse"></div>
                 </div>
-                <h3 className="text-2xl font-bold mb-4 font-mono text-white">READY FOR COMBAT</h3>
-                <p className="text-gray-300 mb-6">
-                  Enter the neural battlefield and test your prompt engineering skills against other warriors.
+                
+                <h3 className="text-3xl font-bold mb-6 font-mono text-white neon-text">COMBAT SYSTEMS ONLINE</h3>
+                <p className="text-xl text-gray-300 mb-8 leading-relaxed max-w-2xl mx-auto">
+                  Neural battlefield is operational and ready for engagement. 
+                  Initialize combat protocols to begin your journey to neural supremacy.
                 </p>
+                
                 <button 
-                  className="cyber-btn text-lg px-8 py-4 transform hover:scale-105 transition-transform" 
+                  className="cyber-btn text-2xl px-12 py-6 transform hover:scale-110 transition-all duration-300 shadow-2xl" 
                   onClick={joinQueue}
                 >
-                  🚀 FIND OPPONENT
+                  🚀 INITIATE COMBAT SEARCH
                 </button>
+                
+                <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                  <div className="p-4 bg-black/30 rounded-lg border border-gray-700/50">
+                    <div className="text-cyan-400 font-mono font-bold">⚡ INSTANT</div>
+                    <div className="text-gray-400">Matchmaking</div>
+                  </div>
+                  <div className="p-4 bg-black/30 rounded-lg border border-gray-700/50">
+                    <div className="text-purple-400 font-mono font-bold">🤖 AI</div>
+                    <div className="text-gray-400">Powered Scoring</div>
+                  </div>
+                  <div className="p-4 bg-black/30 rounded-lg border border-gray-700/50">
+                    <div className="text-pink-400 font-mono font-bold">🏆 RANKED</div>
+                    <div className="text-gray-400">Competition</div>
+                  </div>
+                </div>
               </div>
             </div>
           )}
 
           {/* Queued State */}
           {status === "queued" && (
-            <div className="max-w-2xl mx-auto text-center">
-              <div className="cyber-card p-8">
-                <div className="cyber-spinner w-16 h-16 mx-auto mb-6"></div>
-                <h3 className="text-2xl font-bold mb-4 font-mono text-white">SCANNING FOR OPPONENTS</h3>
-                <p className="text-gray-300 mb-6">
-                  Neural network is searching for a worthy adversary...
+            <div className="max-w-3xl mx-auto text-center">
+              <div className="cyber-card p-12 battle-arena">
+                <div className="cyber-spinner w-24 h-24 mx-auto mb-8"></div>
+                <h3 className="text-3xl font-bold mb-6 font-mono text-white neon-text">SCANNING NEURAL NETWORK</h3>
+                <p className="text-xl text-gray-300 mb-8 leading-relaxed">
+                  Advanced matchmaking algorithms are analyzing the global warrior database 
+                  to find an opponent of matching skill level...
                 </p>
+                
+                <div className="mb-8">
+                  <div className="progress-bar mb-4">
+                    <div className="progress-fill" style={{ width: '60%' }}></div>
+                  </div>
+                  <div className="text-sm text-gray-400 font-mono">Analyzing combat profiles...</div>
+                </div>
+                
                 <button 
-                  className="cyber-btn-secondary px-6 py-3" 
+                  className="cyber-btn-secondary px-8 py-4 text-lg" 
                   onClick={leaveQueue}
                 >
-                  ❌ ABORT SEARCH
+                  ❌ ABORT SEARCH PROTOCOL
                 </button>
               </div>
             </div>
@@ -250,38 +284,47 @@ export default function GamePage() {
 
           {/* Matched State */}
           {status === "matched" && (
-            <div className="max-w-3xl mx-auto">
-              <div className="cyber-card p-8 mb-6">
-                <div className="text-center mb-6">
-                  <div className="flex items-center justify-center space-x-4 mb-4">
-                    <div className="w-12 h-12 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-full flex items-center justify-center">
-                      <span className="text-white font-bold">{username?.[0]?.toUpperCase()}</span>
+            <div className="max-w-4xl mx-auto">
+              <div className="cyber-card p-10 mb-8 battle-arena">
+                <div className="text-center mb-8">
+                  <h3 className="text-2xl font-bold mb-6 font-mono text-white neon-text">OPPONENT ACQUIRED</h3>
+                  
+                  <div className="flex items-center justify-center space-x-8 mb-8">
+                    <div className="text-center">
+                      <div className="w-16 h-16 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-full flex items-center justify-center mb-3 shadow-lg shadow-cyan-500/40">
+                        <span className="text-white font-bold text-xl">{username?.[0]?.toUpperCase()}</span>
+                      </div>
+                      <div className="text-cyan-400 font-mono font-bold">{username}</div>
+                      <div className="text-xs text-gray-500">YOU</div>
                     </div>
-                    <span className="text-2xl">⚔️</span>
-                    <div className="w-12 h-12 bg-gradient-to-br from-purple-400 to-pink-500 rounded-full flex items-center justify-center">
-                      <span className="text-white font-bold">{opponent?.[0]?.toUpperCase()}</span>
+                    
+                    <div className="text-4xl animate-pulse">⚔️</div>
+                    
+                    <div className="text-center">
+                      <div className="w-16 h-16 bg-gradient-to-br from-purple-400 to-pink-500 rounded-full flex items-center justify-center mb-3 shadow-lg shadow-purple-500/40">
+                        <span className="text-white font-bold text-xl">{opponent?.[0]?.toUpperCase()}</span>
+                      </div>
+                      <div className="text-purple-400 font-mono font-bold">{opponent}</div>
+                      <div className="text-xs text-gray-500">OPPONENT</div>
                     </div>
                   </div>
-                  <h3 className="text-xl font-bold mb-2 font-mono">
-                    <span className="text-cyan-400">{username}</span> VS <span className="text-purple-400">{opponent}</span>
-                  </h3>
-                  <div className="text-sm text-gray-400 font-mono">ROUND {round} PREPARATION</div>
-                </div>
-
-                <div className="bg-black/30 p-6 rounded-lg border border-gray-700/50 mb-6">
-                  <div className="text-sm text-gray-400 font-mono mb-2">TARGET PREVIEW</div>
-                  <div className="text-xl font-bold text-white font-mono">{target}</div>
+                  
+                  <div className="bg-black/40 p-6 rounded-lg border border-gray-700/50 mb-8">
+                    <div className="text-sm text-gray-400 font-mono mb-2">ROUND {round} TARGET PREVIEW</div>
+                    <div className="text-2xl font-bold text-white font-mono neon-text">{target}</div>
+                  </div>
                 </div>
 
                 <div className="text-center">
-                  <p className="text-gray-300 mb-6">
-                    Both warriors must submit their neural prompts. The AI will judge accuracy and award points.
+                  <p className="text-lg text-gray-300 mb-8 leading-relaxed">
+                    Neural link established with opponent. Both warriors must submit their combat prompts. 
+                    The AI core will evaluate accuracy and award points based on target precision.
                   </p>
                   <button 
-                    className="cyber-btn-success px-8 py-4" 
+                    className="cyber-btn-success text-xl px-12 py-6" 
                     onClick={() => { setStatus("in-round"); setPrompt(""); }}
                   >
-                    ⚡ BEGIN ROUND {round}
+                    ⚡ COMMENCE ROUND {round}
                   </button>
                 </div>
               </div>
@@ -290,51 +333,73 @@ export default function GamePage() {
 
           {/* In Round State */}
           {status === "in-round" && (
-            <div className="max-w-3xl mx-auto">
-              <div className="cyber-card p-8 mb-6">
-                <div className="text-center mb-6">
+            <div className="max-w-4xl mx-auto">
+              <div className="cyber-card p-10 mb-8 battle-arena">
+                <div className="text-center mb-8">
                   <div className="text-sm text-gray-400 font-mono mb-2">ROUND {round} — NEURAL TARGET</div>
-                  <div className="text-2xl font-bold text-white font-mono mb-4 neon-text">{target}</div>
-                  <div className="w-full bg-gray-700 rounded-full h-2 mb-4">
-                    <div 
-                      className="bg-gradient-to-r from-cyan-400 to-purple-400 h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${(round / 3) * 100}%` }}
-                    ></div>
+                  <div className="text-3xl font-bold text-white font-mono mb-6 neon-text">{target}</div>
+                  
+                  <div className="max-w-md mx-auto mb-6">
+                    <div className="progress-bar">
+                      <div 
+                        className="progress-fill transition-all duration-500"
+                        style={{ width: `${(round / 3) * 100}%` }}
+                      ></div>
+                    </div>
+                    <div className="text-xs text-gray-400 font-mono mt-2">
+                      BATTLE PROGRESS: {round}/3 ROUNDS
+                    </div>
                   </div>
                 </div>
 
-                <div className="space-y-4">
+                <div className="space-y-6">
                   <div>
-                    <label className="block text-sm font-mono text-gray-300 mb-2">
-                      NEURAL PROMPT
+                    <label className="block text-lg font-mono text-gray-300 mb-4">
+                      🧠 NEURAL PROMPT INTERFACE
                     </label>
                     <textarea 
                       value={prompt} 
                       onChange={(e) => setPrompt(e.target.value)} 
-                      placeholder="Craft your neural prompt to match the target..." 
-                      className="cyber-input w-full h-32 resize-none"
+                      placeholder="Craft your neural prompt to precisely match the target. Use descriptive language and specific details to maximize accuracy..." 
+                      className="cyber-input w-full h-40 resize-none text-lg"
                       maxLength={500}
+                      disabled={submittedRef.current}
                     />
-                    <div className="text-xs text-gray-500 mt-1 font-mono">
-                      {prompt.length}/500 characters
+                    <div className="flex justify-between items-center mt-3">
+                      <div className="text-sm text-gray-500 font-mono">
+                        Character count: {prompt.length}/500
+                      </div>
+                      <div className="text-sm text-gray-500 font-mono">
+                        {prompt.split(' ').filter(w => w.length > 0).length} words
+                      </div>
                     </div>
                   </div>
 
                   <div className="flex gap-4">
                     <button 
-                      className="cyber-btn flex-1 py-3 disabled:opacity-50 disabled:cursor-not-allowed" 
+                      className="cyber-btn flex-1 py-4 text-lg disabled:opacity-50 disabled:cursor-not-allowed" 
                       onClick={submitPrompt} 
-                      disabled={!prompt || submittedRef.current}
+                      disabled={!prompt.trim() || submittedRef.current}
                     >
-                      {submittedRef.current ? "⏳ SUBMITTED" : "🚀 SUBMIT & EVALUATE"}
+                      {submittedRef.current ? "⏳ PROMPT SUBMITTED" : "🚀 SUBMIT & EVALUATE"}
                     </button>
                     <button 
-                      className="cyber-btn-secondary px-6 py-3" 
+                      className="cyber-btn-secondary px-8 py-4 text-lg" 
                       onClick={() => setPrompt("")}
+                      disabled={submittedRef.current}
                     >
                       🗑️ CLEAR
                     </button>
                   </div>
+                  
+                  {prompt.trim() && !submittedRef.current && (
+                    <div className="bg-green-900/20 border border-green-500/30 rounded-lg p-4">
+                      <div className="flex items-center space-x-2 text-green-400 text-sm font-mono">
+                        <span>✅</span>
+                        <span>Neural prompt ready for submission</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -342,26 +407,34 @@ export default function GamePage() {
 
           {/* Waiting State */}
           {status === "waiting" && (
-            <div className="max-w-2xl mx-auto text-center">
-              <div className="cyber-card p-8">
-                <div className="cyber-spinner w-16 h-16 mx-auto mb-6"></div>
-                <h3 className="text-2xl font-bold mb-4 font-mono text-white">AWAITING OPPONENT</h3>
-                <p className="text-gray-300">
-                  Your neural prompt has been submitted. Waiting for opponent to complete their submission...
+            <div className="max-w-3xl mx-auto text-center">
+              <div className="cyber-card p-12 battle-arena">
+                <div className="cyber-spinner w-24 h-24 mx-auto mb-8"></div>
+                <h3 className="text-3xl font-bold mb-6 font-mono text-white neon-text">AWAITING OPPONENT</h3>
+                <p className="text-xl text-gray-300 mb-8 leading-relaxed">
+                  Your neural prompt has been submitted to the AI evaluation core. 
+                  Waiting for opponent to complete their submission...
                 </p>
+                
+                <div className="bg-cyan-900/20 border border-cyan-500/30 rounded-lg p-6">
+                  <div className="flex items-center justify-center space-x-3 text-cyan-400">
+                    <span className="text-2xl">🧠</span>
+                    <span className="font-mono">AI CORE ANALYZING SUBMISSIONS...</span>
+                  </div>
+                </div>
               </div>
             </div>
           )}
 
           {/* Round Results */}
           {roundResults.length > 0 && (
-            <div className="max-w-4xl mx-auto mb-8">
-              <h3 className="text-2xl font-bold mb-6 text-center font-mono">
+            <div className="max-w-6xl mx-auto mb-12">
+              <h3 className="text-3xl font-bold mb-8 text-center font-mono">
                 <span className="bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent neon-text">
-                  BATTLE RESULTS
+                  🏆 BATTLE ANALYSIS
                 </span>
               </h3>
-              <div className="space-y-4">
+              <div className="space-y-6">
                 {roundResults.map((r, idx) => (
                   <RoundResult
                     key={idx}
@@ -377,41 +450,67 @@ export default function GamePage() {
 
           {/* Finished State */}
           {status === "finished" && (
-            <div className="max-w-3xl mx-auto text-center">
-              <div className="cyber-card p-8">
-                <div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center shadow-lg shadow-yellow-500/30">
-                  <span className="text-4xl">🏆</span>
+            <div className="max-w-4xl mx-auto text-center">
+              <div className="cyber-card p-16 battle-arena">
+                <div className="w-32 h-32 mx-auto mb-8 bg-gradient-to-br from-yellow-400 via-orange-500 to-red-500 rounded-full flex items-center justify-center shadow-2xl shadow-yellow-500/40 relative">
+                  <span className="text-6xl">🏆</span>
+                  <div className="absolute inset-0 bg-gradient-to-br from-yellow-400 via-orange-500 to-red-500 rounded-full blur-2xl opacity-50 -z-10 scale-150 animate-pulse"></div>
                 </div>
                 
-                <h3 className="text-3xl font-bold mb-6 font-mono">
+                <h3 className="text-4xl font-bold mb-8 font-mono">
                   <span className="bg-gradient-to-r from-yellow-400 to-orange-400 bg-clip-text text-transparent neon-text">
-                    BATTLE COMPLETE
+                    NEURAL COMBAT COMPLETE
                   </span>
                 </h3>
 
-                <div className="grid grid-cols-2 gap-6 mb-8">
-                  <div className="cyber-card p-6">
-                    <div className="text-sm text-gray-400 font-mono mb-2">YOUR SCORE</div>
-                    <div className="text-3xl font-bold text-cyan-400 font-mono">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+                  <div className="cyber-card p-8 bg-gradient-to-br from-cyan-500/10 to-blue-500/10 border-cyan-500/40">
+                    <div className="text-sm text-gray-400 font-mono mb-2">YOUR FINAL SCORE</div>
+                    <div className="text-5xl font-bold text-cyan-400 font-mono neon-text mb-2">
                       {mySide === "p1" ? totals.p1 : totals.p2}
                     </div>
+                    <div className="text-sm text-gray-500 font-mono">NEURAL POINTS</div>
                   </div>
-                  <div className="cyber-card p-6">
+                  <div className="cyber-card p-8 bg-gradient-to-br from-purple-500/10 to-pink-500/10 border-purple-500/40">
                     <div className="text-sm text-gray-400 font-mono mb-2">OPPONENT SCORE</div>
-                    <div className="text-3xl font-bold text-purple-400 font-mono">
+                    <div className="text-5xl font-bold text-purple-400 font-mono neon-text mb-2">
                       {mySide === "p1" ? totals.p2 : totals.p1}
                     </div>
+                    <div className="text-sm text-gray-500 font-mono">NEURAL POINTS</div>
                   </div>
                 </div>
 
-                <div className="flex flex-wrap gap-4 justify-center">
-                  <button className="cyber-btn px-6 py-3" onClick={goHome}>
-                    🏠 RETURN HOME
+                {/* Victory/Defeat Message */}
+                <div className="mb-12">
+                  {((mySide === "p1" && totals.p1 > totals.p2) || (mySide === "p2" && totals.p2 > totals.p1)) ? (
+                    <div className="bg-green-900/30 border-2 border-green-500/40 rounded-lg p-6">
+                      <div className="text-3xl mb-2">🎉</div>
+                      <div className="text-2xl font-bold text-green-400 font-mono neon-text">VICTORY ACHIEVED</div>
+                      <div className="text-green-300 mt-2">Neural supremacy established. Your prompt engineering skills have proven superior.</div>
+                    </div>
+                  ) : ((mySide === "p1" && totals.p1 < totals.p2) || (mySide === "p2" && totals.p2 < totals.p1)) ? (
+                    <div className="bg-red-900/30 border-2 border-red-500/40 rounded-lg p-6">
+                      <div className="text-3xl mb-2">⚔️</div>
+                      <div className="text-2xl font-bold text-red-400 font-mono">COMBAT DEFEAT</div>
+                      <div className="text-red-300 mt-2">The opponent's neural patterns proved more effective. Analyze and adapt for future battles.</div>
+                    </div>
+                  ) : (
+                    <div className="bg-yellow-900/30 border-2 border-yellow-500/40 rounded-lg p-6">
+                      <div className="text-3xl mb-2">🤝</div>
+                      <div className="text-2xl font-bold text-yellow-400 font-mono">NEURAL STALEMATE</div>
+                      <div className="text-yellow-300 mt-2">Equal neural prowess detected. Both warriors demonstrate exceptional skill.</div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap gap-6 justify-center">
+                  <button className="cyber-btn px-8 py-4 text-lg" onClick={goHome}>
+                    🏠 RETURN TO BASE
                   </button>
-                  <button className="cyber-btn-success px-6 py-3" onClick={handlePlayAgain}>
-                    🔄 BATTLE AGAIN
+                  <button className="cyber-btn-success px-8 py-4 text-lg" onClick={handlePlayAgain}>
+                    🔄 INITIATE NEW BATTLE
                   </button>
-                  <button className="cyber-btn-secondary px-6 py-3" onClick={viewLeaderboard}>
+                  <button className="cyber-btn-secondary px-8 py-4 text-lg" onClick={viewLeaderboard}>
                     👑 VIEW CHAMPIONS
                   </button>
                 </div>
