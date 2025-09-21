@@ -16,10 +16,17 @@ export default function LeaderboardPage() {
       setCurrentUser(localStorage.getItem("pd_username"));
     }
     
+    console.log('About to fetch leaderboard from:', process.env.NEXT_PUBLIC_BACKEND_BASE);
     fetchLeaderboard().then(res => {
+      console.log('Leaderboard API response:', res);
+      console.log('Response data:', res.data);
+      console.log('Data array:', res.data.data);
+      console.log('Data length:', res.data.data?.length);
       setData(res.data.data || []);
     }).catch(e => {
-      console.error(e);
+      console.error('Leaderboard API error:', e);
+      console.error('Error details:', e.response?.data);
+      console.error('Error status:', e.response?.status);
     }).finally(() => setLoading(false));
   }, []);
 
@@ -229,7 +236,6 @@ export default function LeaderboardPage() {
                                       <div className={`font-bold font-mono text-lg ${isCurrentUser ? 'text-cyan-400 neon-text' : 'text-white'}`}>
                                         {warrior.username}
                                         {isCurrentUser && <span className="text-xs text-cyan-400 ml-2">(YOU)</span>}
-                                        }
                                       </div>
                                       {rank <= 3 && (
                                         <div className="text-xs text-gray-500 font-mono">
