@@ -8,7 +8,10 @@ const { stopOllama } = require("./services/ollamaService");
 const authRoutes = require("./routes/auth");
 const chatRoutes = require("./routes/chat");
 const modelRoutes = require("./routes/models");
+const leaderboardRoutes = require("./routes/leaderboard");
 const { authenticateToken } = require("./middleware/auth");
+const gameService = require("./services/gameService");
+const { init: initDb } = require("./services/dbService");
 
 const PORT = process.env.PORT || 4000;
 const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || "http://localhost:3000";
@@ -38,18 +41,59 @@ const io = socketIo(server, {
 app.use("/api/auth", authRoutes);
 app.use("/api/chat", authenticateToken, chatRoutes);
 app.use("/api/models", authenticateToken, modelRoutes);
+app.use("/api/leaderboard", leaderboardRoutes);
 
 // Health check endpoint
 app.get("/health", (req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
+// Test Ollama endpoint
+app.get("/api/test-ollama", async (req, res) => {
+  try {
+    const axios = require("axios");
+    const response = await axios.get("http://localhost:11434/api/version", { timeout: 5000 });
+    res.json({ ok: true, ollama_connected: true, version: response.data });
+  } catch (e) {
+    res.json({ ok: false, ollama_connected: false, error: e.message });
+  }
+});
+
 // Socket.IO connection handling
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
 
+  socket.on("register", ({ username }) => {
+    socket.username = username;
+    console.log(`${username} registered with socket ${socket.id}`);
+  });
+
+  socket.on("joinQueue", () => {
+    if (socket.username) {
+      gameService.addToQueue(socket.username, socket);
+      socket.emit("queued");
+    }
+  });
+
+  socket.on("leaveQueue", () => {
+    if (socket.username) {
+      gameService.removeFromQueue(socket.username);
+    }
+  });
+
+  socket.on("submitPrompt", async ({ matchId, prompt }) => {
+    if (socket.username) {
+      try {
+        await gameService.submitPrompt(matchId, socket.username, prompt);
+      } catch (error) {
+        socket.emit("errorMsg", { error: error.message });
+      }
+    }
+  });
+
   socket.on("disconnect", () => {
     console.log("User disconnected:", socket.id);
+    gameService.handleDisconnect(socket);
   });
 });
 
@@ -59,6 +103,13 @@ app.set("io", io);
 server.listen(PORT, () => {
   console.log(`✓ Server running on port ${PORT}`);
   console.log(`✓ CORS enabled for: ${FRONTEND_ORIGIN}`);
+  
+  // Initialize database
+  initDb().then(() => {
+    console.log("✓ Database initialized");
+  }).catch(err => {
+    console.error("Database initialization failed:", err);
+  });
   
   // Check if Ollama is running, if not try to start it
   checkAndStartOllama();

@@ -1,6 +1,7 @@
-// src/components/LoadingSpinner.jsx
-export default function LoadingSpinner({ size = 6 }) {
+export default function LoadingSpinner({ size = "w-8 h-8", color = "border-cyan-400" }) {
   return (
-    <div className={`animate-spin rounded-full border-4 border-t-transparent border-gray-700 w-${size} h-${size}`}></div>
+    <div className="flex items-center justify-center">
+      <div className={`${size} border-4 border-gray-700 ${color} border-t-transparent rounded-full animate-spin shadow-lg`}></div>
+    </div>
   );
 }

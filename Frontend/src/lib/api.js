@@ -28,3 +28,7 @@ export async function health() {
 export async function testOllama() {
   return api.get('/api/test-ollama');
 }
+
+export async function testChat(prompt, target) {
+  return api.post('/api/chat/similarity', { prompt, target });
+}
