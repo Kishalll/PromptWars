@@ -112,7 +112,7 @@ server.listen(PORT, () => {
   });
   
   // Check if Ollama is running, if not try to start it
-  checkAndStartOllama();
+  // checkAndStartOllama(); // Commented out for debugging leaderboard
 });
 
 async function checkAndStartOllama() {
