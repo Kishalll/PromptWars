@@ -229,6 +229,7 @@ export default function LeaderboardPage() {
                                       <div className={`font-bold font-mono text-lg ${isCurrentUser ? 'text-cyan-400 neon-text' : 'text-white'}`}>
                                         {warrior.username}
                                         {isCurrentUser && <span className="text-xs text-cyan-400 ml-2">(YOU)</span>}
+                                        }
                                       </div>
                                       {rank <= 3 && (
                                         <div className="text-xs text-gray-500 font-mono">
