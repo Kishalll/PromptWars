@@ -2,7 +2,7 @@ const express = require("express");
 const http = require("http");
 const socketIo = require("socket.io");
 const cors = require("cors");
-const { spawn } = require("child_process");
+const { spawn, exec } = require("child_process");
 const { stopOllama } = require("./services/ollamaService");
 
 const authRoutes = require("./routes/auth");
@@ -39,13 +39,18 @@ const io = socketIo(server, {
 
 // Routes
 app.use("/api/auth", authRoutes);
-app.use("/api/chat", authenticateToken, chatRoutes);
-app.use("/api/models", authenticateToken, modelRoutes);
+app.use("/api/chat", chatRoutes);
+app.use("/api/models", modelRoutes);
 app.use("/api/leaderboard", leaderboardRoutes);
 
 // Health check endpoint
-app.get("/health", (req, res) => {
-  res.json({ status: "ok", timestamp: new Date().toISOString() });
+app.get("/api/health", (req, res) => {
+  res.json({ 
+    status: "ok", 
+    timestamp: new Date().toISOString(),
+    server: "Backend Core Online",
+    port: PORT
+  });
 });
 
 // Test Ollama endpoint
@@ -57,6 +62,23 @@ app.get("/api/test-ollama", async (req, res) => {
   } catch (e) {
     res.json({ ok: false, ollama_connected: false, error: e.message });
   }
+});
+
+// Root endpoint
+app.get("/", (req, res) => {
+  res.json({ 
+    message: "Prompt Wars Backend Server", 
+    status: "online",
+    version: "1.0.0",
+    endpoints: {
+      health: "/api/health",
+      auth: "/api/auth",
+      chat: "/api/chat", 
+      models: "/api/models",
+      leaderboard: "/api/leaderboard",
+      testOllama: "/api/test-ollama"
+    }
+  });
 });
 
 // Socket.IO connection handling
@@ -100,8 +122,9 @@ io.on("connection", (socket) => {
 // Make io available to routes
 app.set("io", io);
 
-server.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`✓ Server running on port ${PORT}`);
+  console.log(`✓ Server accessible at http://localhost:${PORT}`);
   console.log(`✓ CORS enabled for: ${FRONTEND_ORIGIN}`);
   
   // Initialize database
