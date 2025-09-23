@@ -17,11 +17,26 @@ router.get("/", async (req, res) => {
 
 router.get("/test-ollama", async (req, res) => {
   try {
-    const response = await axios.get(`${OLLAMA_BASE_URL}/api/version`, { timeout: 5000 });
-    res.json({ ok: true, ollama_connected: true, version: response.data });
+    const versionResponse = await axios.get(`${OLLAMA_BASE_URL}/api/version`, { timeout: 5000 });
+    
+    // Also check available models
+    const modelsResponse = await axios.get(`${OLLAMA_BASE_URL}/api/tags`, { timeout: 5000 });
+    const models = modelsResponse.data?.models || [];
+    
+    res.json({ 
+      ok: true, 
+      ollama_connected: true, 
+      version: versionResponse.data,
+      models: models.map(m => ({ name: m.name, size: m.size }))
+    });
   } catch (e) {
     console.error("Ollama test error:", e);
-    res.json({ ok: false, ollama_connected: false, error: e.message });
+    res.json({ 
+      ok: false, 
+      ollama_connected: false, 
+      error: e.message,
+      suggestion: "Please start Ollama with 'ollama serve' and ensure required models are installed"
+    });
   }
 });
 

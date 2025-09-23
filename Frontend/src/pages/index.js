@@ -27,13 +27,19 @@ export default function Home() {
     // Check Ollama connection
     testOllama()
       .then((res) => {
-        if (res.data.ollama_connected) {
+        console.log("Ollama test response:", res.data);
+        if (res.data?.ollama_connected) {
           setConnectionStatus(prev => ({ ...prev, ollama: 'connected' }));
+          console.log("✓ Ollama connected with models:", res.data.models?.length || 0);
         } else {
           setConnectionStatus(prev => ({ ...prev, ollama: 'failed' }));
+          console.warn("⚠ Ollama connection failed:", res.data?.error);
         }
       })
-      .catch(() => setConnectionStatus(prev => ({ ...prev, ollama: 'failed' })));
+      .catch((err) => {
+        console.error("Ollama test failed:", err);
+        setConnectionStatus(prev => ({ ...prev, ollama: 'failed' }));
+      });
   }, []);
 
   const getStatusColor = (status) => {

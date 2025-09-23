@@ -7,7 +7,7 @@ const axios = require("axios");
 
 const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL || "http://localhost:11434";
 const OLLAMA_EMBED_MODEL = process.env.OLLAMA_EMBED_MODEL || "nomic-embed-text";
-const OLLAMA_LLM_MODEL = process.env.OLLAMA_LLM_MODEL || "phi4-mini:latest";
+const OLLAMA_LLM_MODEL = process.env.OLLAMA_LLM_MODEL || "llama3.2";
 
 /* ----------------- Math helpers ----------------- */
 function dot(a, b) {
@@ -32,6 +32,14 @@ function cosineSim(a, b) {
 /** Try a few common payload shapes when calling Ollama embeddings. Returns embedding array or throws. */
 async function tryEmbed(text) {
   const url = `${OLLAMA_BASE_URL}/api/embeddings`;
+  
+  // First check if Ollama is running
+  try {
+    await axios.get(`${OLLAMA_BASE_URL}/api/version`, { timeout: 5000 });
+  } catch (e) {
+    throw new Error("Ollama service is not running. Please start Ollama first.");
+  }
+  
   const tryBodies = [
     { model: OLLAMA_EMBED_MODEL, input: text },
     { model: OLLAMA_EMBED_MODEL, prompt: text },
@@ -48,7 +56,7 @@ async function tryEmbed(text) {
       if (Array.isArray(d.embeddings) && Array.isArray(d.embeddings[0])) return d.embeddings[0];
       if (d.result && Array.isArray(d.result.embedding)) return d.result.embedding;
     } catch (e) {
-      // continue to next attempt
+      console.warn(`Embedding attempt failed:`, e.message);
     }
   }
   throw new Error("Embeddings not available");
@@ -96,6 +104,15 @@ function extractOutputText(respData) {
 /** Ask the LLM to return a single number 0..1 for similarity */
 async function scoreWithLLM(a, b) {
   const url = `${OLLAMA_BASE_URL}/api/generate`;
+  
+  // Check if Ollama is running
+  try {
+    await axios.get(`${OLLAMA_BASE_URL}/api/version`, { timeout: 5000 });
+  } catch (e) {
+    console.warn("Ollama not available for LLM scoring");
+    return 0;
+  }
+  
   const prompt = `Rate how well phrase A describes or matches phrase B. Return ONLY a decimal number between 0.0 and 1.0.
 
 A: "${a}"
@@ -237,13 +254,28 @@ async function generateTargets(count = 3, excludeArray = [], theme = null) {
   count = Math.max(1, Math.min(10, Number(count) || 3));
   const excludeLower = new Set((excludeArray || []).map(x => String(x).toLowerCase()));
 
+  // Check if Ollama is running first
+  try {
+    await axios.get(`${OLLAMA_BASE_URL}/api/version`, { timeout: 5000 });
+  } catch (e) {
+    console.warn("Ollama not available, using fallback targets");
+    return getFallbackTargets(count, excludeLower);
+  }
+
   const seed = Date.now() + "-" + Math.floor(Math.random() * 10000);
   const themeNote = theme ? ` Theme: ${String(theme)}.` : "";
-  const prompt = `Generate ${count} short visual phrases (2-4 words each) as JSON array. No explanation.${themeNote}
+  const prompt = `Generate exactly ${count} unique short visual phrases (2-4 words each) for an AI image generation game. Return as JSON array only, no explanation.${themeNote}
+
+Requirements:
+- Each phrase must be 2-4 words
+- Visual and descriptive
+- Suitable for image generation
+- No duplicates
+- No explanations
 
 Format: ["phrase1", "phrase2", "phrase3"]
 
-Examples: ["sunset beach", "old castle", "busy market"]
+Examples: ["glowing forest", "ancient temple", "neon cityscape", "misty mountains"]
 
 JSON:`;
 
@@ -251,30 +283,71 @@ JSON:`;
 
   // helper to call the model
   async function askModelForTargets(p) {
-    const resp = await axios.post(url, {
-      model: OLLAMA_LLM_MODEL,
-      prompt: p,
-      stream: false,
-      options: {
-        temperature: 0.7,
-        top_p: 0.9,
-        stop: ["\n\n", "Explanation:", "Note:", "Additional"]
+    try {
+      const resp = await axios.post(url, {
+        model: OLLAMA_LLM_MODEL,
+        prompt: p,
+        stream: false,
+        options: {
+          temperature: 0.8,
+          top_p: 0.9,
+          stop: ["\n\n", "Explanation:", "Note:", "Additional", "Here are", "I'll generate"]
+        }
+      }, { timeout: 30000 });
+      return extractOutputText(resp && resp.data ? resp.data : null) || "";
+    } catch (error) {
+      console.error("Model request failed:", error.message);
+      throw error;
+    }
+  }
+
+  // Fallback function for when Ollama is not available
+  function getFallbackTargets(count, excludeLower) {
+    const fallbacks = [
+      "glowing forest", "ancient temple", "neon cityscape", "misty mountains",
+      "crystal cave", "floating island", "desert oasis", "frozen lake",
+      "burning village", "golden sunset", "stormy ocean", "peaceful garden",
+      "dark alley", "bright meadow", "snowy peak", "tropical beach",
+      "old lighthouse", "busy market", "quiet library", "grand cathedral",
+      "hidden waterfall", "starry night", "rainbow bridge", "volcanic crater",
+      "bamboo forest", "ice palace", "sand dunes", "coral reef"
+    ];
+    
+    const filtered = [];
+    const shuffled = [...fallbacks].sort(() => Math.random() - 0.5);
+    
+    for (const target of shuffled) {
+      if (!excludeLower.has(target.toLowerCase()) && filtered.length < count) {
+        filtered.push(target);
       }
-    }, { timeout: 30000 });
+    }
+    
+    // Fill remaining slots if needed
+    while (filtered.length < count) {
+      const randomTarget = `scene ${Math.floor(Math.random() * 1000)}`;
+      if (!excludeLower.has(randomTarget.toLowerCase())) {
+        filtered.push(randomTarget);
+      }
+    }
+    
+    return filtered.slice(0, count);
     return extractOutputText(resp && resp.data ? resp.data : null) || "";
   }
 
   try {
     let raw = await askModelForTargets(prompt);
+    console.log("Raw model response:", raw);
     raw = stripFences(raw);
 
     // Try JSON parse first
     let candidates = tryParseJsonArray(raw) || [];
+    console.log("Parsed candidates:", candidates);
 
     // If JSON parse failed, split by lines and commas
     if (!candidates || candidates.length === 0) {
       const lines = raw.split(/\r?\n|,\s*/).map(s => s.trim()).filter(Boolean);
       candidates = lines.map(s => s.replace(/^["'“”]+|["'“”]+$/g, "").trim()).filter(Boolean);
+      console.log("Line-split candidates:", candidates);
     }
 
     // Dedupe and apply excludes and basic length constraints
@@ -355,13 +428,8 @@ JSON:`;
 
     return filtered.slice(0, count);
   } catch (err) {
-    // On error, return safe fallbacks
-    const fallbacks = [
-      "mysterious sunset on the sea",
-      "ancient stone temple",
-      "neon city skyline"
-    ].slice(0, count);
-    return fallbacks;
+    console.error("Target generation failed:", err.message);
+    return getFallbackTargets(count, excludeLower);
   }
 }
 

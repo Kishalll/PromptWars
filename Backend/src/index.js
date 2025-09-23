@@ -112,16 +112,20 @@ server.listen(PORT, () => {
   });
   
   // Check if Ollama is running, if not try to start it
-  // checkAndStartOllama(); // Commented out for debugging leaderboard
+  checkAndStartOllama();
 });
 
 async function checkAndStartOllama() {
   try {
     const axios = require("axios");
-    await axios.get("http://localhost:11434/api/version", { timeout: 3000 });
+    const response = await axios.get("http://localhost:11434/api/version", { timeout: 5000 });
     console.log("✓ Ollama is already running");
+    console.log("✓ Ollama version:", response.data?.version || "unknown");
+    
+    // Try to pull required models
+    await ensureModelsAvailable();
   } catch (err) {
-    console.log("Starting Ollama...");
+    console.log("⚠ Ollama not running. Attempting to start...");
     try {
       ollamaProcess = spawn("ollama", ["serve"], {
         stdio: ["ignore", "pipe", "pipe"],
@@ -141,13 +145,46 @@ async function checkAndStartOllama() {
         ollamaProcess = null;
       });
       
+      // Wait a bit for Ollama to start
+      setTimeout(async () => {
+        try {
+          await axios.get("http://localhost:11434/api/version", { timeout: 5000 });
+          console.log("✓ Ollama started successfully");
+          await ensureModelsAvailable();
+        } catch (e) {
+          console.warn("⚠ Ollama may not have started properly");
+        }
+      }, 3000);
+      
       console.log("✓ Ollama started");
     } catch (startErr) {
       console.warn("Could not start Ollama automatically:", startErr.message);
+      console.warn("Please start Ollama manually: ollama serve");
     }
   }
 }
 
+async function ensureModelsAvailable() {
+  const axios = require("axios");
+  const requiredModels = ["llama3.2", "nomic-embed-text"];
+  
+  try {
+    const response = await axios.get("http://localhost:11434/api/tags", { timeout: 10000 });
+    const installedModels = response.data?.models?.map(m => m.name) || [];
+    
+    for (const model of requiredModels) {
+      const isInstalled = installedModels.some(installed => installed.includes(model));
+      if (!isInstalled) {
+        console.log(`⚠ Model ${model} not found. Please install it manually:`);
+        console.log(`   ollama pull ${model}`);
+      } else {
+        console.log(`✓ Model ${model} is available`);
+      }
+    }
+  } catch (err) {
+    console.warn("Could not check installed models:", err.message);
+  }
+}
 async function gracefulShutdown(signal) {
   console.log(`\n🛑 Received ${signal}. Shutting down gracefully...`);
   
