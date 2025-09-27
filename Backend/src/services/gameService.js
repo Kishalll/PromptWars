@@ -82,6 +82,12 @@ class GameService {
       throw new Error("Player not in this match");
     }
     
+    // Server-side validation to prevent target words in prompts
+    const validation = this.validatePrompt(prompt, match.currentTarget);
+    if (!validation.valid) {
+      throw new Error(validation.error);
+    }
+    
     match.submissions[playerKey] = {
       username,
       prompt: prompt.trim(),
@@ -94,6 +100,32 @@ class GameService {
     if (match.submissions.p1 && match.submissions.p2) {
       await this.evaluateRound(match);
     }
+  }
+
+  validatePrompt(prompt, target) {
+    if (!prompt || !target) return { valid: true, error: "" };
+    
+    const promptLower = prompt.toLowerCase().trim();
+    const targetLower = target.toLowerCase().trim();
+    
+    // Split target into individual words (2+ characters to avoid common words)
+    const targetWords = targetLower.split(/\s+/).filter(word => word.length >= 2);
+    
+    // Check if any target words appear in the prompt
+    const foundWords = targetWords.filter(word => {
+      // Check for exact word matches (with word boundaries)
+      const wordRegex = new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+      return wordRegex.test(promptLower);
+    });
+    
+    if (foundWords.length > 0) {
+      return {
+        valid: false,
+        error: `Prompt contains target words: "${foundWords.join('", "')}" - Please describe without using these exact words!`
+      };
+    }
+    
+    return { valid: true, error: "" };
   }
 
   async evaluateRound(match) {

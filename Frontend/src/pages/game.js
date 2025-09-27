@@ -22,6 +22,7 @@ export default function GamePage() {
 
   const submittedRef = useRef(false);
   const playersRef = useRef({});
+  const [promptError, setPromptError] = useState("");
 
   useEffect(() => {
     setIsLoaded(true);
@@ -141,9 +142,43 @@ export default function GamePage() {
     setStatus("idle");
   }
 
+  function validatePrompt(prompt, target) {
+    if (!prompt || !target) return { valid: true, error: "" };
+    
+    const promptLower = prompt.toLowerCase().trim();
+    const targetLower = target.toLowerCase().trim();
+    
+    // Split target into individual words (2+ characters to avoid common words like "a", "an", "the")
+    const targetWords = targetLower.split(/\s+/).filter(word => word.length >= 2);
+    
+    // Check if any target words appear in the prompt
+    const foundWords = targetWords.filter(word => {
+      // Check for exact word matches (with word boundaries)
+      const wordRegex = new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+      return wordRegex.test(promptLower);
+    });
+    
+    if (foundWords.length > 0) {
+      return {
+        valid: false,
+        error: `Your prompt contains target words: "${foundWords.join('", "')}" - Please describe the target without using these exact words!`
+      };
+    }
+    
+    return { valid: true, error: "" };
+  }
+
   function submitPrompt() {
     if (!socket || !matchId || submittedRef.current) return;
-    socket.emit("submitPrompt", { matchId, prompt: prompt || "" });
+    
+    const validation = validatePrompt(prompt, target);
+    if (!validation.valid) {
+      setPromptError(validation.error);
+      return;
+    }
+    
+    setPromptError("");
+    socket.emit("submitPrompt", { matchId, prompt: prompt.trim() });
     submittedRef.current = true;
     setStatus("waiting");
   }
@@ -359,9 +394,12 @@ export default function GamePage() {
                     </label>
                     <textarea 
                       value={prompt} 
-                      onChange={(e) => setPrompt(e.target.value)} 
+                      onChange={(e) => {
+                        setPrompt(e.target.value);
+                        setPromptError(""); // Clear error when user starts typing
+                      }} 
                       placeholder="Craft your neural prompt to precisely match the target. Use descriptive language and specific details to maximize accuracy..." 
-                      className="cyber-input w-full h-40 resize-none text-lg"
+                      className={`cyber-input w-full h-40 resize-none text-lg ${promptError ? 'border-red-500/60' : ''}`}
                       maxLength={500}
                       disabled={submittedRef.current}
                     />
@@ -375,6 +413,18 @@ export default function GamePage() {
                     </div>
                   </div>
 
+                  {promptError && (
+                    <div className="bg-red-900/30 border-2 border-red-500/40 rounded-lg p-4 backdrop-blur-sm">
+                      <div className="flex items-center space-x-3 text-red-400">
+                        <span className="text-2xl">⚠️</span>
+                        <div>
+                          <div className="font-mono font-bold text-sm mb-1">PROMPT VALIDATION ERROR</div>
+                          <div className="font-mono text-sm">{promptError}</div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex gap-4">
                     <button 
                       className="cyber-btn flex-1 py-4 text-lg disabled:opacity-50 disabled:cursor-not-allowed" 
@@ -385,14 +435,17 @@ export default function GamePage() {
                     </button>
                     <button 
                       className="cyber-btn-secondary px-8 py-4 text-lg" 
-                      onClick={() => setPrompt("")}
+                      onClick={() => {
+                        setPrompt("");
+                        setPromptError("");
+                      }}
                       disabled={submittedRef.current}
                     >
                       🗑️ CLEAR
                     </button>
                   </div>
                   
-                  {prompt.trim() && !submittedRef.current && (
+                  {prompt.trim() && !submittedRef.current && !promptError && (
                     <div className="bg-green-900/20 border border-green-500/30 rounded-lg p-4">
                       <div className="flex items-center space-x-2 text-green-400 text-sm font-mono">
                         <span>✅</span>
