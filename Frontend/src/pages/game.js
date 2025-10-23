@@ -22,7 +22,10 @@ export default function GamePage() {
 
   const submittedRef = useRef(false);
   const playersRef = useRef({});
+  const timerRef = useRef(null);
   const [promptError, setPromptError] = useState("");
+  const [timeLeft, setTimeLeft] = useState(30);
+  const [timerActive, setTimerActive] = useState(false);
 
   useEffect(() => {
     setIsLoaded(true);
@@ -62,6 +65,9 @@ export default function GamePage() {
       setPrompt("");
       submittedRef.current = false;
       setStatus("in-round");
+      setTimeLeft(30);
+      setTimerActive(true);
+      startTimer();
     };
     s.on("nextRound", onNextRound);
 
@@ -130,6 +136,36 @@ export default function GamePage() {
     };
   }, []);
 
+  const startTimer = () => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    
+    timerRef.current = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev <= 1) {
+          // Time's up - auto submit
+          if (!submittedRef.current && socket && matchId) {
+            const currentPrompt = prompt.trim() || "No response provided";
+            socket.emit("submitPrompt", { matchId, prompt: currentPrompt });
+            submittedRef.current = true;
+            setStatus("waiting");
+          }
+          setTimerActive(false);
+          clearInterval(timerRef.current);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
+  }, []);
+
   function joinQueue() {
     if (!socket || !username) return;
     setStatus("queued");
@@ -181,6 +217,10 @@ export default function GamePage() {
     socket.emit("submitPrompt", { matchId, prompt: prompt.trim() });
     submittedRef.current = true;
     setStatus("waiting");
+    setTimerActive(false);
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+    }
   }
 
   function handlePlayAgain() {
@@ -375,6 +415,34 @@ export default function GamePage() {
                   <div className="text-3xl font-bold text-white font-mono mb-6 neon-text">{target}</div>
                   
                   <div className="max-w-md mx-auto mb-6">
+                    {/* Timer Display */}
+                    <div className="mb-6">
+                      <div className={`text-center p-4 rounded-lg border-2 backdrop-blur-sm ${
+                        timeLeft <= 10 
+                          ? 'bg-red-900/30 border-red-500/40 text-red-400' 
+                          : timeLeft <= 20 
+                          ? 'bg-yellow-900/30 border-yellow-500/40 text-yellow-400'
+                          : 'bg-green-900/30 border-green-500/40 text-green-400'
+                      }`}>
+                        <div className="flex items-center justify-center space-x-3">
+                          <span className="text-2xl">
+                            {timeLeft <= 10 ? '⚠️' : timeLeft <= 20 ? '⏰' : '⏱️'}
+                          </span>
+                          <div>
+                            <div className="font-mono font-bold text-sm mb-1">
+                              {timerActive ? 'NEURAL SYNC TIMER' : 'TIMER EXPIRED'}
+                            </div>
+                            <div className={`font-mono text-2xl font-bold ${
+                              timeLeft <= 10 ? 'animate-pulse' : ''
+                            }`}>
+                              {String(Math.floor(timeLeft / 60)).padStart(2, '0')}:
+                              {String(timeLeft % 60).padStart(2, '0')}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
                     <div className="progress-bar">
                       <div 
                         className="progress-fill transition-all duration-500"
@@ -445,11 +513,20 @@ export default function GamePage() {
                     </button>
                   </div>
                   
-                  {prompt.trim() && !submittedRef.current && !promptError && (
+                  {prompt.trim() && !submittedRef.current && !promptError && timerActive && (
                     <div className="bg-green-900/20 border border-green-500/30 rounded-lg p-4">
                       <div className="flex items-center space-x-2 text-green-400 text-sm font-mono">
                         <span>✅</span>
                         <span>Neural prompt ready for submission</span>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {!timerActive && timeLeft === 0 && (
+                    <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-4">
+                      <div className="flex items-center space-x-2 text-red-400 text-sm font-mono">
+                        <span>⏰</span>
+                        <span>Time expired - prompt auto-submitted</span>
                       </div>
                     </div>
                   )}

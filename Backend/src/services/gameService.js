@@ -52,7 +52,8 @@ class GameService {
       submissions: {},
       scores: { p1: 0, p2: 0 },
       rounds: [],
-      createdAt: Date.now()
+      createdAt: Date.now(),
+      roundTimer: null
     };
     
     this.matches.set(matchId, match);
@@ -69,6 +70,43 @@ class GameService {
     p2.socket.emit("matchStarted", matchData);
     
     console.log(`Match ${matchId} created: ${p1.username} vs ${p2.username}`);
+    
+    // Start the first round timer
+    this.startRoundTimer(match);
+  }
+
+  startRoundTimer(match) {
+    // Clear any existing timer
+    if (match.roundTimer) {
+      clearTimeout(match.roundTimer);
+    }
+    
+    // Set 30-second timer
+    match.roundTimer = setTimeout(async () => {
+      console.log(`Round timer expired for match ${match.matchId}, round ${match.round}`);
+      
+      // Auto-submit empty prompts for players who haven't submitted
+      if (!match.submissions.p1) {
+        match.submissions.p1 = {
+          username: match.players.p1,
+          prompt: "No response provided",
+          submittedAt: Date.now(),
+          autoSubmitted: true
+        };
+      }
+      
+      if (!match.submissions.p2) {
+        match.submissions.p2 = {
+          username: match.players.p2,
+          prompt: "No response provided", 
+          submittedAt: Date.now(),
+          autoSubmitted: true
+        };
+      }
+      
+      // Evaluate the round
+      await this.evaluateRound(match);
+    }, 30000); // 30 seconds
   }
 
   async submitPrompt(matchId, username, prompt) {
@@ -98,6 +136,11 @@ class GameService {
     
     // Check if both players have submitted
     if (match.submissions.p1 && match.submissions.p2) {
+      // Clear the timer since both players submitted
+      if (match.roundTimer) {
+        clearTimeout(match.roundTimer);
+        match.roundTimer = null;
+      }
       await this.evaluateRound(match);
     }
   }
@@ -186,6 +229,9 @@ class GameService {
         
         match.sockets.p1.emit("nextRound", nextRoundData);
         match.sockets.p2.emit("nextRound", nextRoundData);
+        
+        // Start timer for next round
+        this.startRoundTimer(match);
       }
     } catch (error) {
       console.error("Error evaluating round:", error);
@@ -225,6 +271,11 @@ class GameService {
     // Clean up
     this.matches.delete(match.matchId);
     
+    // Clear any remaining timer
+    if (match.roundTimer) {
+      clearTimeout(match.roundTimer);
+    }
+    
     console.log(`Match ${match.matchId} ended. Winner: ${winner || "Draw"}`);
   }
 
@@ -244,6 +295,12 @@ class GameService {
         const remainingSocket = match.sockets.p1 === socket ? match.sockets.p2 : match.sockets.p1;
         
         remainingSocket.emit("errorMsg", { error: `${disconnectedPlayer} disconnected` });
+        
+        // Clear timer on disconnect
+        if (match.roundTimer) {
+          clearTimeout(match.roundTimer);
+        }
+        
         this.matches.delete(matchId);
         console.log(`Match ${matchId} ended due to ${disconnectedPlayer} disconnect`);
         break;
