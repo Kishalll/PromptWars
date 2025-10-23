@@ -53,9 +53,11 @@ export default function GamePage() {
       else setMySide("p2");
       setOpponent(p1 === u ? p2 : p1);
       setRound(m.round || 1);
-      setTarget(m.target || "");
+      setTarget(""); // Don't show target yet
       setRoundResults([]);
       setTotals({ p1: 0, p2: 0 });
+      setTimeLeft(30);
+      setTimerActive(false);
     };
     s.on("matchStarted", onMatchStarted);
 
@@ -70,6 +72,18 @@ export default function GamePage() {
       startTimer();
     };
     s.on("nextRound", onNextRound);
+
+    const onRoundStarted = (r) => {
+      setRound(r.round);
+      setTarget(r.target);
+      setPrompt("");
+      submittedRef.current = false;
+      setStatus("in-round");
+      setTimeLeft(30);
+      setTimerActive(true);
+      startTimer();
+    };
+    s.on("roundStarted", onRoundStarted);
 
     const onRoundResult = (r) => {
       try {
@@ -130,6 +144,7 @@ export default function GamePage() {
       s.off("queued", onQueued);
       s.off("matchStarted", onMatchStarted);
       s.off("nextRound", onNextRound);
+      s.off("roundStarted", onRoundStarted);
       s.off("roundResult", onRoundResult);
       s.off("gameOver", onGameOver);
       s.off("errorMsg");
@@ -396,8 +411,12 @@ export default function GamePage() {
                     The AI core will evaluate accuracy and award points based on target precision.
                   </p>
                   <button 
-                    className="cyber-btn-success text-xl px-12 py-6" 
-                    onClick={() => { setStatus("in-round"); setPrompt(""); }}
+                    className="cyber-btn-success text-xl px-12 py-6"
+                    onClick={() => {
+                      if (socket && matchId) {
+                        socket.emit("startRound", { matchId });
+                      }
+                    }}
                   >
                     ⚡ COMMENCE ROUND {round}
                   </button>

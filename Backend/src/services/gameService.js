@@ -48,12 +48,13 @@ class GameService {
       sockets: { p1: p1.socket, p2: p2.socket },
       round: 1,
       targets,
-      currentTarget: targets[0],
+      currentTarget: null, // Don't set target yet
       submissions: {},
       scores: { p1: 0, p2: 0 },
       rounds: [],
       createdAt: Date.now(),
-      roundTimer: null
+      roundTimer: null,
+      playersReady: { p1: false, p2: false }
     };
     
     this.matches.set(matchId, match);
@@ -62,17 +63,14 @@ class GameService {
     const matchData = {
       matchId,
       players: match.players,
-      round: match.round,
-      target: match.currentTarget
+      round: match.round
+      // Don't send target yet
     };
     
     p1.socket.emit("matchStarted", matchData);
     p2.socket.emit("matchStarted", matchData);
     
     console.log(`Match ${matchId} created: ${p1.username} vs ${p2.username}`);
-    
-    // Start the first round timer
-    this.startRoundTimer(match);
   }
 
   startRoundTimer(match) {
@@ -142,6 +140,43 @@ class GameService {
         match.roundTimer = null;
       }
       await this.evaluateRound(match);
+    }
+  }
+
+  startRound(matchId, username) {
+    const match = this.matches.get(matchId);
+    if (!match) {
+      throw new Error("Match not found");
+    }
+    
+    const playerKey = match.players.p1 === username ? "p1" : "p2";
+    if (!playerKey || match.players[playerKey] !== username) {
+      throw new Error("Player not in this match");
+    }
+    
+    // Mark player as ready
+    match.playersReady[playerKey] = true;
+    
+    console.log(`${username} is ready for round ${match.round}`);
+    
+    // Check if both players are ready
+    if (match.playersReady.p1 && match.playersReady.p2) {
+      // Set the target for this round
+      match.currentTarget = match.targets[match.round - 1];
+      
+      const roundData = {
+        round: match.round,
+        target: match.currentTarget
+      };
+      
+      // Notify both players that the round has started
+      match.sockets.p1.emit("roundStarted", roundData);
+      match.sockets.p2.emit("roundStarted", roundData);
+      
+      console.log(`Round ${match.round} started for match ${match.matchId} with target: ${match.currentTarget}`);
+      
+      // Start the timer
+      this.startRoundTimer(match);
     }
   }
 
@@ -221,6 +256,7 @@ class GameService {
         match.round++;
         match.currentTarget = match.targets[match.round - 1];
         match.submissions = {};
+        match.playersReady = { p1: false, p2: false }; // Reset ready status
         
         const nextRoundData = {
           round: match.round,

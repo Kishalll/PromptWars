@@ -113,6 +113,16 @@ io.on("connection", (socket) => {
     }
   });
 
+  socket.on("startRound", ({ matchId }) => {
+    if (socket.username) {
+      try {
+        gameService.startRound(matchId, socket.username);
+      } catch (error) {
+        socket.emit("errorMsg", { error: error.message });
+      }
+    }
+  });
+
   socket.on("disconnect", () => {
     console.log("User disconnected:", socket.id);
     gameService.handleDisconnect(socket);
