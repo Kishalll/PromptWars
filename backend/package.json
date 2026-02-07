@@ -15,5 +15,8 @@
     "express": "^4.21.1",
     "socket.io": "^4.8.1",
     "sqlite3": "^5.1.7"
+  },
+  "overrides": {
+    "tar": "^7.4.3"
   }
 }
