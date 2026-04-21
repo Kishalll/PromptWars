@@ -7,7 +7,7 @@ const axios = require("axios");
 
 const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL || "http://localhost:11434";
 const OLLAMA_EMBED_MODEL = process.env.OLLAMA_EMBED_MODEL || "nomic-embed-text";
-const OLLAMA_LLM_MODEL = process.env.OLLAMA_LLM_MODEL || "llama3.2";
+const OLLAMA_LLM_MODEL = process.env.OLLAMA_LLM_MODEL || "qwen2.5:3b";
 
 /* ----------------- Math helpers ----------------- */
 function dot(a, b) {

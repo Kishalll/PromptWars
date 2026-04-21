@@ -199,7 +199,7 @@ async function checkAndStartOllama() {
 
 async function ensureModelsAvailable() {
   const axios = require("axios");
-  const requiredModels = ["llama3.2", "nomic-embed-text"];
+  const requiredModels = ["qwen2.5:3b", "nomic-embed-text"];
   
   try {
     const response = await axios.get("http://localhost:11434/api/tags", { timeout: 10000 });

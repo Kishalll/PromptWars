@@ -7,7 +7,7 @@ A real-time multiplayer game where players compete to write the most accurate pr
 - **Frontend**: Next.js 15, Tailwind CSS
 - **Backend**: Node.js, Express, Socket.IO
 - **Database**: SQLite
-- **AI**: Ollama (running `llama3.2` and `nomic-embed-text`)
+- **AI**: Ollama (running `qwen2.5:3b` and `nomic-embed-text`)
 
 ## Setup
 
@@ -20,7 +20,7 @@ A real-time multiplayer game where players compete to write the most accurate pr
 Make sure Ollama is running and has the required models:
 
 ```bash
-ollama pull llama3.2
+ollama pull qwen2.5:3b
 ollama pull nomic-embed-text
 ollama serve
 ```
